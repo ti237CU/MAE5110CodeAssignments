@@ -1,10 +1,12 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 
 from models import inverted_pendulum_walker as model
+from assignment2_code import stabilizing_upright as controller
 
 # Fixed controls for this visualization example.
 params = {
@@ -16,10 +18,10 @@ params = {
     "ankle_torque": 0.0,  # N m
 }
 
-initial_state = np.array([0.0, 3.0])
+initial_state = np.array([0.1, 0.1])
 timestep = 1e-4
-sim_time = 3.0
-desired_number_of_steps = 3
+sim_time = 5.0
+desired_number_of_steps = 5
 
 n_timesteps = round(sim_time / timestep) + 1
 time_traj = np.arange(n_timesteps) * timestep
@@ -30,6 +32,7 @@ completed_steps = 0
 # Simulation loop. Replace this Euler step with your own integrator as needed.
 for step, t in enumerate(time_traj[:-1]):
     state = state_traj[:, step]
+    params["ankle_torque"] = controller.feedback_linearization(state, params)
     next_state = state + timestep * model.dynamics(t, state, params)
 
     if model.event_guard(state, next_state, params):
@@ -42,6 +45,8 @@ for step, t in enumerate(time_traj[:-1]):
 
 time_traj = time_traj[: step + 2]
 state_traj = state_traj[:, : step + 2]
+print("Final Theta", state_traj[0, -1])
+print("Final angular vel", state_traj[1, -1])
 
 fig, ax = plt.subplots(figsize=(8, 5), layout="constrained")
 
