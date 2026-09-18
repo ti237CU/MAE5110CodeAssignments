@@ -24,9 +24,28 @@ $$
 $$
 \tau = -mglsin(\theta) - ml^2u
 $$
-To stabilize the inverted pendulum in the upright equilibrium we can configure a control input u:
+To stabilize the inverted pendulum in the upright equilibrium we can configure a control input u to add artifical damping and friction:
+$$
+u = -ml^2(K_d\dot{\theta} + K_p\theta)
+$$
+After feedback linearization, the dynamics are:
+$$
+\ddot{\theta} + K_d\dot{\theta} + K_p\theta = 0
+$$
+$$
+\ddot{\theta} + 2\zeta{\omega_n}\dot{\theta} + {\omega_n}^2\theta = 0
+$$
+Relating the coefficents we can see that:
+$$
+K_d = 2\zeta{\omega_n}
+$$
+$$
+K_p = {\omega_n}^2
+$$
+
+### Region of Attraction
+To produce my region of attraction my small grid search was based on the set contstrains of the angle of attack and the incline, which would allow for a max and minimum value of theta. Then using those values of theta, we could calculate a minimum and maximum value for the angular velocity to be used in the grid.
 
 ### Poincare Section
-
 
 ### Control as a lookup table

@@ -26,32 +26,53 @@ sim_time = 20.0
 n_timesteps = round(sim_time / timestep) + 1
 time_traj = np.arange(n_timesteps) * timestep
 
-theta_grid = np.linspace(-0.25, 0.25, 21)
-angular_vel_grid = np.linspace(-0.7, 0.7, 21)
+theta_grid = np.linspace(-0.4, 0.6, 130)
+angular_vel_grid = np.linspace(-1.6, 1.6, 130)
+
 tol = 1e-3
+settling_time = 0.5
+settling_steps = round(settling_time / timestep)
 
 theta_cur, angular_vel_cur = np.meshgrid(theta_grid, angular_vel_grid)
-roa = np.zeros_like(theta_cur, dtype=bool)
 
-for i in range(len(angular_vel_grid)):
-    for j in range (len(theta_grid)):
-        state = np.array([theta_grid[j], angular_vel_grid[i]])
-        
-        for step, t in enumerate(time_traj[:-1]):
-            params["ankle_torque"] = controller.feedback_linearization(state, params)
-            next_state = integrator.integrate(
-                t,
-                state,
-                timestep,
-                model.dynamics,
-                params
-            )
-            if controller.is_upright(next_state, tol):
-                roa[i, j] = True
-                break
-            
-            state = next_state
-            
+settle_count = np.zeros(theta_cur.shape, dtype=int)
+converged = np.zeros(theta_cur.shape, dtype=bool)
+
+state = np.stack([theta_cur, angular_vel_cur])
+
+for step, t in enumerate(time_traj[:-1]):
+    params["ankle_torque"] = controller.feedback_linearization(state, params)
+    next_state = integrator.integrate(
+        t,
+        state,
+        timestep,
+        model.dynamics,
+        params
+    )
+    
+    inside_upright = controller.is_upright(
+        next_state,
+        tol
+    )
+    
+    settle_count = np.where(
+        inside_upright,
+        settle_count + 1,
+        0
+    )
+    
+    converged_new = ((~converged) & (settle_count >= settling_steps))
+    converged |= converged_new
+    
+    state = next_state
+
+roa = converged
+
+for j, th in enumerate(theta_grid):
+    converged_omegas = angular_vel_grid[roa[:, j]]
+    if converged_omegas.size:
+        print(f"theta={th:.3f}: omega in [{converged_omegas.min():.3f}, {converged_omegas.max():.3f}]")
+
 plt.figure(figsize=(8,6))
 
 plt.contourf(
@@ -73,5 +94,12 @@ legend_elements = {
 plt.legend(handles=legend_elements)
 
 plt.show()
+
+np.savez(
+    "assignment2_code/roa_data.npz",
+    theta_grid=theta_grid,
+    angular_vel_grid=angular_vel_grid,
+    roa=roa
+)
 
 

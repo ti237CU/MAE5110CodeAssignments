@@ -43,12 +43,9 @@ def event_guard(previous_state, next_state, params):
     next_theta = next_state[0]
     
     forward_guard = incline + angle_of_attack
-    backward_guard = incline - angle_of_attack
     
     previous_forward_guard = previous_theta - forward_guard
     next_forward_guard = next_theta - forward_guard
-    previous_backward_guard = previous_theta - backward_guard
-    next_backward_guard = next_theta - backward_guard
     
     return previous_forward_guard < 0 <= next_forward_guard
 
