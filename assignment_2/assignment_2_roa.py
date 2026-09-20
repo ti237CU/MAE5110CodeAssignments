@@ -26,8 +26,8 @@ sim_time = 20.0
 n_timesteps = round(sim_time / timestep) + 1
 time_traj = np.arange(n_timesteps) * timestep
 
-theta_grid = np.linspace(-0.4, 0.6, 130)
-angular_vel_grid = np.linspace(-1.6, 1.6, 130)
+theta_grid = np.linspace(-0.4, 0.6, 100)
+angular_vel_grid = np.linspace(-1.6, 1.6, 100)
 
 tol = 1e-3
 settling_time = 0.5
@@ -38,7 +38,21 @@ theta_cur, angular_vel_cur = np.meshgrid(theta_grid, angular_vel_grid)
 settle_count = np.zeros(theta_cur.shape, dtype=int)
 converged = np.zeros(theta_cur.shape, dtype=bool)
 
+gamma = params["incline"]
+alpha = params["angle_of_attack"]
+
+backward_guard = gamma - alpha
+forward_guard = gamma + alpha
+
 state = np.stack([theta_cur, angular_vel_cur])
+failed = np.zeros(theta_cur.shape, dtype=bool)
+
+initial_guards = (
+    (theta_cur <= backward_guard)
+    |
+    (theta_cur >= forward_guard)
+)
+failed |= initial_guards
 
 for step, t in enumerate(time_traj[:-1]):
     params["ankle_torque"] = controller.feedback_linearization(state, params)
@@ -50,23 +64,39 @@ for step, t in enumerate(time_traj[:-1]):
         params
     )
     
+    crossed_guard = (
+        (next_state[0] <= backward_guard)
+        |
+        (next_state[0] >= forward_guard)
+    )
+    
+    failed_new = (~converged) & crossed_guard
+    failed |= failed_new
+    
     inside_upright = controller.is_upright(
         next_state,
         tol
     )
     
+    valid_upright = ((~failed) &
+                     (~converged) &
+                    inside_upright &
+                    (next_state[0] > backward_guard) &
+                    (next_state[0] < forward_guard)
+    )
+    
     settle_count = np.where(
-        inside_upright,
+        valid_upright,
         settle_count + 1,
         0
     )
     
-    converged_new = ((~converged) & (settle_count >= settling_steps))
+    converged_new = ((~failed) & (~converged) & (settle_count >= settling_steps))
     converged |= converged_new
     
     state = next_state
 
-roa = converged
+roa = converged & (~failed)
 
 for j, th in enumerate(theta_grid):
     converged_omegas = angular_vel_grid[roa[:, j]]

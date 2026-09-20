@@ -1,7 +1,14 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
 
-import matplotlib.pyplot as plt
+sys.path.append(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )
+    )
+)
+
 import numpy as np
 
 from integrators import rk4 as integrator
@@ -9,84 +16,73 @@ from models import inverted_pendulum_walker as model
 import stabilizing_upright as controller
 
 
-local_params = {
-    "gravity": 9.81,  # m/s^2
-    "length": 1.0,  # m
-    "mass": 1.0,  # kg
-    "incline": 0.06,  # rad
-    "angle_of_attack": np.pi / 8,  # rad
-    "ankle_torque": 0.0,  # N m
-}
 
-def simulate_step(initial_angular_vel, angle_of_attack,theta_grid, angular_vel_grid, roa, params):
-    state = np.array([0.0, initial_angular_vel])
+def simulate_step(initial_angular_vel, angle_of_attack, theta_grid, angular_vel_grid, roa, params):
+    state = np.array([0.0, initial_angular_vel], dtype=float)
+
     local_params = params.copy()
-    
     local_params["angle_of_attack"] = angle_of_attack
     local_params["ankle_torque"] = 0.0
-    
-    if controller.in_roa(state, theta_grid, angular_vel_grid, roa):
-        return "already in roa", state
-    
+
+
+    if controller.is_valid_capture(state, theta_grid, angular_vel_grid, roa, params):
+        return ("already in roa", state)
+
     t = 0.0
     max_time = 10.0
     timestep = 1e-3
     has_impacted = False
-    
+
     while t < max_time:
-        
         local_params["ankle_torque"] = 0.0
 
-        next_state = integrator.integrate(t, state, timestep, model.dynamics, local_params)
-        
-        if controller.roa_event_guard(state, next_state, theta_grid, angular_vel_grid, roa):
-            return "roa", next_state
-        
-        if not has_impacted and model.event_guard(state, next_state, local_params):
-            print(
-                f"Impact Theta: theta={next_state[0]:.3f},"
-                f"omega={next_state[1]:.3f}"
-            )
-            next_state = model.event_dynamics(next_state, local_params)
-            has_impacted = True
-            if controller.in_roa(state, theta_grid, angular_vel_grid, roa):
-                    return "roa", state
-        elif (
-            has_impacted and
-            state[0] < 0 and 
-            next_state[0] >= 0 and
-            next_state[1] > 0
+        next_state = integrator.integrate(
+            t,
+            state,
+            timestep,
+            model.dynamics,
+            local_params
+        )
+
+        if (
+            controller.roa_event_guard(state, next_state, theta_grid, angular_vel_grid, roa)
+            and
+            controller.is_valid_capture(next_state, theta_grid, angular_vel_grid, roa, params)
         ):
-            print(
-                f"Poincare crossing: theta={next_state[0]:.3f}, "
-                f"omega={next_state[1]:.3f}"
-            )
-            return "poincare", next_state[1]
-        
+            return ("roa", next_state)
+
+        if (not has_impacted and model.event_guard(state,next_state,local_params)):
+            next_state = (model.event_dynamics(next_state,local_params))
+            has_impacted = True
+
+            if controller.is_valid_capture(next_state, theta_grid, angular_vel_grid, roa, params):
+                return ("roa", next_state)
+        elif (has_impacted and controller.poincare_section(state, next_state)):
+            return ("poincare", next_state[1])
+
         state = next_state
         t += timestep
-    
-    return "failed", np.nan
 
-# Do the same thing as the function above except keep track of the state and time over the simulation time.
-# Created 2 separate functions because we do not always need state history which can increase computation time if it is not needed.
-def simulate_step_history(initial_angular_vel, angle_of_attack, theta_grid, angular_vel_grid, roa,params):
+    return ("failed", np.nan)
 
-    state = np.array([0.0, initial_angular_vel])
+
+
+def simulate_step_history(initial_angular_vel, angle_of_attack, theta_grid, angular_vel_grid, roa, params):
+    state = np.array([0.0,initial_angular_vel],dtype=float)
+
     local_params = params.copy()
-    local_params["angle_of_attack"] = (angle_of_attack)
+    local_params["angle_of_attack"] = angle_of_attack
     local_params["ankle_torque"] = 0.0
 
     t = 0.0
     max_time = 10.0
     timestep = 1e-3
-
     has_impacted = False
 
     time_history = [t]
     state_history = [state.copy()]
 
-    if controller.in_roa(state, theta_grid, angular_vel_grid,roa):
+    if controller.is_valid_capture(state, theta_grid, angular_vel_grid, roa, params):
         return (
             "already in roa",
             state,
@@ -97,38 +93,18 @@ def simulate_step_history(initial_angular_vel, angle_of_attack, theta_grid, angu
 
     while t < max_time:
         local_params["ankle_torque"] = 0.0
-        next_state = integrator.integrate(
-            t,
-            state,
-            timestep,
-            model.dynamics,
-            local_params
-        )
-        next_t = t + timestep
 
-        if controller.roa_event_guard(state, next_state, theta_grid, angular_vel_grid, roa):
-            time_history.append(next_t)
-            state_history.append(next_state.copy())
+        next_state = integrator.integrate(t,state, timestep, model.dynamics,local_params)
+        next_t = (t + timestep)
 
-            return (
-                "roa",
-                next_state,
-                np.asarray(time_history),
-                np.asarray(state_history)
-            )
+        if (
+            controller.roa_event_guard(state, next_state, theta_grid, angular_vel_grid, roa)
+            and
+            controller.is_valid_capture(next_state, theta_grid, angular_vel_grid, roa, params)
+        ):
+                time_history.append(next_t)
+                state_history.append(next_state.copy())
 
-
-        if (not has_impacted and model.event_guard(state, next_state,local_params)):
-            time_history.append(next_t)
-            state_history.append(next_state.copy())
-
-            next_state = model.event_dynamics(next_state,local_params)
-
-            time_history.append(next_t)
-            state_history.append(next_state.copy())
-            has_impacted = True
-
-            if controller.in_roa(next_state, theta_grid, angular_vel_grid, roa):
                 return (
                     "roa",
                     next_state,
@@ -136,13 +112,27 @@ def simulate_step_history(initial_angular_vel, angle_of_attack, theta_grid, angu
                     np.asarray(state_history)
                 )
 
-        elif (
-            has_impacted and 
-            state[0] < 0 and
-            next_state[0] >= 0 and
-            next_state[1] > 0
-        ):
 
+        if (not has_impacted and model.event_guard(state, next_state, local_params)):
+            time_history.append(next_t)
+            state_history.append(next_state.copy())
+
+            next_state = (model.event_dynamics(next_state, local_params))
+            time_history.append(next_t)
+
+            state_history.append(next_state.copy())
+
+            has_impacted = True
+
+            if controller.is_valid_capture(next_state, theta_grid, angular_vel_grid, roa, params):
+                return (
+                    "roa",
+                    next_state,
+                    np.asarray(time_history),
+                    np.asarray(state_history)
+                )
+
+        elif (has_impacted and controller.poincare_section(state, next_state)):
             time_history.append(next_t)
             state_history.append(next_state.copy())
 
@@ -155,9 +145,7 @@ def simulate_step_history(initial_angular_vel, angle_of_attack, theta_grid, angu
 
         else:
             time_history.append(next_t)
-            state_history.append(
-                next_state.copy()
-            )
+            state_history.append(next_state.copy())
 
         state = next_state
         t = next_t

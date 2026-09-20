@@ -9,9 +9,7 @@ sys.path.append(
 )
 
 from pathlib import Path
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 import simulate_step as simulate
 
@@ -88,8 +86,10 @@ for resolution in resolutions:
             elif status == "poincare":
                 next_omega_table[i, j] = result
 
-            else:
+            elif status == "failed":
                 failed_table[i, j] = True
+            else:
+                raise ValueError(f"unexpected status from simulate_step(): {status}")
 
     steps_to_roa = np.full(len(omega_grid), -1, dtype=int)
     control_alpha = np.full(len(omega_grid), np.nan)
@@ -98,7 +98,10 @@ for resolution in resolutions:
         if already_in_roa[i]:
             steps_to_roa[i] = 0
 
-    for target_steps in range(1, 5):
+    target_steps = 1
+    
+    while True:
+        newly_resolved = 0
         for i in range(len(omega_grid)):
 
             if steps_to_roa[i] != -1:
@@ -109,6 +112,7 @@ for resolution in resolutions:
                     if reaches_roa[i, j]:
                         steps_to_roa[i] = 1
                         control_alpha[i] = (alpha_grid[j])
+                        newly_resolved += 1
                         break
 
                 else:
@@ -131,7 +135,12 @@ for resolution in resolutions:
                     ):
                         steps_to_roa[i] = (target_steps)
                         control_alpha[i] = (alpha_grid[j])
+                        newly_resolved += 1
                         break
+        print(f"Step depth {target_steps}: {newly_resolved} new states")
+        if newly_resolved == 0:
+            break
+        target_steps += 1
 
     poincare_transitions = np.sum(~np.isnan(next_omega_table))
     roa_transitions = np.sum(reaches_roa)
