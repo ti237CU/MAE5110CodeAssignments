@@ -16,6 +16,7 @@ def feedback_linearization(state, params):
     gravity_term = -(gravity/length) * np.sin(theta) * mass * length ** 2
     stabilizing_term = mass * length ** 2 * (- Kd * angular_vel - Kp * theta)
     control_input = gravity_term + stabilizing_term
+    
     return np.clip(control_input, torque_min, torque_max)
 
 def is_upright(state, tolerance):
@@ -42,15 +43,8 @@ def in_roa(state, theta_grid, angular_vel_grid, roa):
     return False
 
 def roa_event_guard(previous_state, next_state, theta_grid, angular_vel_grid, roa):
-    previous_inside = in_roa(previous_state, 
-                             theta_grid, 
-                             angular_vel_grid, 
-                             roa)
-    
-    next_inside = in_roa(next_state,
-                         theta_grid,
-                         angular_vel_grid,
-                         roa)
+    previous_inside = in_roa(previous_state, theta_grid, angular_vel_grid, roa)
+    next_inside = in_roa(next_state, theta_grid,angular_vel_grid,roa)
     
     return (not previous_inside) and next_inside
 

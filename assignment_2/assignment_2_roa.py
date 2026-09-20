@@ -7,7 +7,7 @@ import numpy as np
 
 from integrators import rk4 as integrator
 from models import inverted_pendulum_walker as model
-from assignment2_code import stabilizing_upright as controller
+import stabilizing_upright as controller
 
 # Fixed controls for this visualization example.
 params = {
@@ -96,7 +96,7 @@ plt.legend(handles=legend_elements)
 plt.show()
 
 np.savez(
-    "assignment2_code/roa_data.npz",
+    "assignment_2/roa_data.npz",
     theta_grid=theta_grid,
     angular_vel_grid=angular_vel_grid,
     roa=roa

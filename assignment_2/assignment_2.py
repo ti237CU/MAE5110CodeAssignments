@@ -7,7 +7,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 
 from integrators import rk4 as integrator
 from models import inverted_pendulum_walker as model
-from assignment2_code import stabilizing_upright as controller
+import stabilizing_upright as controller
 
 # Fixed controls for this visualization example.
 params = {
@@ -19,13 +19,13 @@ params = {
     "ankle_torque": 0.0,  # N m
 }
 
-roa_data = np.load("assignment2_code/roa_data.npz")
+roa_data = np.load("assignment_2/roa_data.npz")
 
 theta_grid = roa_data["theta_grid"]
 angular_vel_grid = roa_data["angular_vel_grid"]
 roa = roa_data["roa"]
 
-initial_state = np.array([0.1, -0.3])
+initial_state = np.array([0.3, -0.7])
 
 timestep = 1e-3
 sim_time = 10.0
@@ -77,7 +77,7 @@ if frame_indices[-1] != time_traj.size - 1:
 animation = FuncAnimation(
     fig, draw_frame, frames=frame_indices, interval=1000 / fps, repeat=False
 )
-output = Path("output/assignment_2")
+output = Path("assignment_2/output")
 output.mkdir(parents=True, exist_ok=True)
 animation.save(output / "walker.gif", writer=PillowWriter(fps=fps))
 
