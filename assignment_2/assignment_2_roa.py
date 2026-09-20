@@ -96,7 +96,7 @@ plt.legend(handles=legend_elements)
 plt.show()
 
 np.savez(
-    "assignment_2/roa_data.npz",
+    "roa_data.npz",
     theta_grid=theta_grid,
     angular_vel_grid=angular_vel_grid,
     roa=roa

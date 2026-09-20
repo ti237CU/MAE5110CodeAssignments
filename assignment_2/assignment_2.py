@@ -19,7 +19,7 @@ params = {
     "ankle_torque": 0.0,  # N m
 }
 
-roa_data = np.load("assignment_2/roa_data.npz")
+roa_data = np.load("roa_data.npz")
 
 theta_grid = roa_data["theta_grid"]
 angular_vel_grid = roa_data["angular_vel_grid"]
@@ -77,7 +77,7 @@ if frame_indices[-1] != time_traj.size - 1:
 animation = FuncAnimation(
     fig, draw_frame, frames=frame_indices, interval=1000 / fps, repeat=False
 )
-output = Path("assignment_2/output")
+output = Path("output")
 output.mkdir(parents=True, exist_ok=True)
 animation.save(output / "walker.gif", writer=PillowWriter(fps=fps))
 

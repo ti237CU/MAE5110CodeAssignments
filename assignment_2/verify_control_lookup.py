@@ -24,12 +24,12 @@ params = {
     "ankle_torque": 0.0,
 }
 
-roa_data = np.load( "assignment_2/roa_data.npz")
+roa_data = np.load( "roa_data.npz")
 theta_grid = roa_data["theta_grid"]
 angular_vel_grid = roa_data["angular_vel_grid"]
 roa = roa_data["roa"]
 
-resolution_dir = Path("assignment_2/resolution_study")
+resolution_dir = Path("resolution_study")
 resolutions = [10, 20, 30, 40, 50, 60, 70, 80,]
 
 omega_min = 0.0

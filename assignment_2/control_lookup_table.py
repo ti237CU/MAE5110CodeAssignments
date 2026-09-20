@@ -26,13 +26,13 @@ params = {
 }
 
 
-roa_data = np.load("assignment_2/roa_data.npz")
+roa_data = np.load("roa_data.npz")
 
 theta_grid = roa_data["theta_grid"]
 angular_vel_grid = roa_data["angular_vel_grid"]
 roa = roa_data["roa"]
 
-output_dir = Path("assignment_2/resolution_study")
+output_dir = Path("resolution_study")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 resolutions = [10, 20, 30, 40, 50, 60, 70, 80]
